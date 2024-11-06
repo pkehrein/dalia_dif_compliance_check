@@ -56,21 +56,21 @@ def fill_empyt_cells(data_frame):
 def check_authors(authors):
     # Checks the column 'Authors' according to the rules of the DIF.
     # Expects: A series from a pandas dataframe containing the authors strings.
-    # Returns: A list of errors with line number and sort.
+    # Returns: A list of errors with line number and type of error.
     global global_header_lines
     author_errors = []
     for index, author in enumerate(authors):
         if author is "":
-            author_errors.append(f"Line {index + global_header_lines + 1}: Mandatory attribute 'Author' is missing.")
+            author_errors.append(f"Line {index + global_header_lines + 2}: Mandatory attribute 'Author' is missing.")
             continue
         if '\*' in author:
             author_list = re.split("\s\*\s", author)
             for auth in author_list:
                 if check_if_error(auth):
-                    author_errors.append(f"Line {index + global_header_lines + 1}: Wrong name format.")
+                    author_errors.append(f"Line {index + global_header_lines + 2}: Wrong name format.")
         else:
             if check_if_error(author):
-                author_errors.append(f"Line {index + global_header_lines + 1}: Wrong name format.")
+                author_errors.append(f"Line {index + global_header_lines + 2}: Wrong name format.")
     return author_errors
 
 
@@ -87,18 +87,46 @@ def check_if_error(author):
 def check_licenses(licenses):
     # Checks the column 'License' according to the rules of the DIF.
     # Expects: A series from a pandas dataframe containing the license strings.
-    # Returns: A list of errors with line number and sort.
+    # Returns: A list of errors with line number and type of error.
     license_list = read_license_file()
     global global_header_lines
     license_errors = []
 
     for index, license_id in enumerate(licenses):
         if license_id is "":
-            license_errors.append(f"Line {index + global_header_lines + 1}: License is missing.")
+            license_errors.append(f"Line {index + global_header_lines + 2}: License is missing.")
             continue
         if license_id not in license_list:
-            license_errors.append(f"Line {index + global_header_lines + 1}: Provided License is not part of the list from 'https://spdx.org/licenses/' or is in a wrong format.")
+            license_errors.append(f"Line {index + global_header_lines + 2}: Provided License is not part of the list from 'https://spdx.org/licenses/' or is in a wrong format.")
     return license_errors
+
+
+def check_link(link_list):
+    # Checks the column 'Link' according to the rules of the DIF.
+    # Expects: A series from a pandas dataframe containing the link strings.
+    # Returns: A list of errors with line number and type of error.
+    global global_header_lines
+    link_errors = []
+
+    for index, link in enumerate(link_list):
+        if link is "":
+            link_errors.append(f"Line {index + global_header_lines + 2}: Link is missing.")
+            continue
+        if re.search("^https://\S*$", link) is None:
+            link_errors.append(f"Line {index + global_header_lines + 2}: Link is not in a valid format.")
+    return link_errors
+
+def check_title(titles):
+    # Checks the column 'Title' according to the rules of the DIF.
+    # Expects: A series from a pandas dataframe containing the title strings.
+    # Returns: A list of errors with line number and type of error.
+    global global_header_lines
+    title_errors = []
+
+    for index, title in enumerate(titles):
+        if title is "":
+            title_errors.append(f"Line {index + global_header_lines + 2}: Title is missing.")
+    return title_errors
 
 
 def check_data(dataframe):
@@ -117,6 +145,16 @@ def check_data(dataframe):
     else:
         found_errors['License'] = "The mandatory Attribute 'License' is missing from every item!"
 
+    if dataframe['Link'] is not None:
+        found_errors['Link'] = check_link(dataframe['Link'])
+    else:
+        found_errors['Link'] = "The mandatory Attribute 'License' is missing from every item!"
+
+    if dataframe['Title'] is not None:
+        found_errors['Title'] = check_title(dataframe['Title'])
+    else:
+        found_errors['Title'] = "The mandatory Attribute 'Title' is missing from every item!"
+
     return found_errors
 
 
@@ -125,4 +163,3 @@ if __name__ == '__main__':
     remove_header_lines([0], csv_file)
     fill_empyt_cells(csv_file)
     check_data(csv_file)
-    print(csv_file)
