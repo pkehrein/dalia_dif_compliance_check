@@ -1,9 +1,22 @@
 import re
-from itertools import filterfalse
-
 import pandas as pd
+import json
 
 global_header_lines = 0
+
+def read_license_file():
+    with open("licenses.json", 'r') as file:
+        data = json.load(file)
+    license_list = extract_identifier(data['licenses'])
+    return license_list
+
+
+def extract_identifier(license_data):
+    identifiers = []
+    for license_identifier in license_data:
+        identifiers.append(license_identifier['licenseId'])
+    return identifiers
+
 
 def read_csv(path):
     # Reads a csv-file into a pandas dataframe.
@@ -59,10 +72,24 @@ def check_if_error(author):
     # Check the format of a name with a regular expression.
     # Expects: A string.
     # Returns: False if the string matches the constraints of the DIF and True if it doesnt.
-    if re.search("^[A-Za-zäöüÄÖÜß]*,\s[A-Za-zäöüÄÖÜß]*", author) is not None or re.search("^[A-Za-z0-9äöüÄÖÜß]*\s:\s\{organization", author) is not None or re.search("^n/a$", author) is not None:
+    if re.search("^[A-Za-zäöüÄÖÜß]*,\s[A-Za-zäöüÄÖÜß]*$", author) is not None or re.search("[A-Za-zäöüÄÖÜß]*,\s[A-Za-zäöüÄÖÜß]*\s?:\s?\{\S*}$", author) is not None or re.search("^[A-Za-z0-9äöüÄÖÜß]*\s:\s\{organization", author) is not None or re.search("^n/a$", author) is not None:
         return False
     else:
         return True
+
+
+def check_licenses(licenses):
+    license_list = read_license_file()
+    global global_header_lines
+    license_errors = []
+
+    for index, license_id in enumerate(licenses):
+        if license_id is "":
+            license_errors.append(f"Line {index + global_header_lines + 1}: License is missing.")
+            continue
+        if license_id not in license_list:
+            license_errors.append(f"Line {index + global_header_lines + 1}: Provided License is not part of the list from 'https://spdx.org/licenses/' or is in a wrong format.")
+    return license_errors
 
 
 def check_data(dataframe):
@@ -75,6 +102,11 @@ def check_data(dataframe):
         found_errors['Authors'] = check_authors(dataframe['Authors'])
     else:
         found_errors['Authors'] = "The mandatory Attribute 'Authors' is missing from every item!"
+
+    if dataframe['License'] is not None:
+        found_errors['License'] = check_licenses(dataframe['License'])
+    else:
+        found_errors['License'] = "The mandatory Attribute 'License' is missing from every item!"
 
     return found_errors
 
