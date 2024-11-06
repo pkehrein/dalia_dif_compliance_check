@@ -5,6 +5,9 @@ import json
 global_header_lines = 0
 
 def read_license_file():
+    # Reads the license data from its JSON-file and calls the extract_identifier-function.
+    # Expects: None
+    # Returns: A list of strings.
     with open("licenses.json", 'r') as file:
         data = json.load(file)
     license_list = extract_identifier(data['licenses'])
@@ -12,6 +15,9 @@ def read_license_file():
 
 
 def extract_identifier(license_data):
+    # Extracts the identifiers from the licenses and puts them in one list as strings.
+    # Expects: A JSON-object containing the license data.
+    # Returns: A list of strings.
     identifiers = []
     for license_identifier in license_data:
         identifiers.append(license_identifier['licenseId'])
@@ -49,7 +55,7 @@ def fill_empyt_cells(data_frame):
 
 def check_authors(authors):
     # Checks the column 'Authors' according to the rules of the DIF.
-    # Expects: A series from a pandas dataframe.
+    # Expects: A series from a pandas dataframe containing the authors strings.
     # Returns: A list of errors with line number and sort.
     global global_header_lines
     author_errors = []
@@ -79,6 +85,9 @@ def check_if_error(author):
 
 
 def check_licenses(licenses):
+    # Checks the column 'License' according to the rules of the DIF.
+    # Expects: A series from a pandas dataframe containing the license strings.
+    # Returns: A list of errors with line number and sort.
     license_list = read_license_file()
     global global_header_lines
     license_errors = []
