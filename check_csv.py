@@ -57,7 +57,6 @@ def check_authors(authors):
     # Checks the column 'Authors' according to the rules of the DIF.
     # Expects: A series from a pandas dataframe containing the authors strings.
     # Returns: A list of errors with line number and type of error.
-    global global_header_lines
     author_errors = []
     for index, author in enumerate(authors):
         if author is "":
@@ -89,7 +88,6 @@ def check_licenses(licenses):
     # Expects: A series from a pandas dataframe containing the license strings.
     # Returns: A list of errors with line number and type of error.
     license_list = read_license_file()
-    global global_header_lines
     license_errors = []
 
     for index, license_id in enumerate(licenses):
@@ -120,13 +118,24 @@ def check_title(titles):
     # Checks the column 'Title' according to the rules of the DIF.
     # Expects: A series from a pandas dataframe containing the title strings.
     # Returns: A list of errors with line number and type of error.
-    global global_header_lines
     title_errors = []
 
     for index, title in enumerate(titles):
         if title is "":
             title_errors.append(f"Line {index + global_header_lines + 2}: Title is missing.")
     return title_errors
+
+
+def check_description(descriptions):
+    # Checks the column 'Description' according to the rules of the DIF.
+    # Expects: A series from a pandas dataframe containing the description strings.
+    # Returns: A list of errors with the line number and type of error.
+    description_errors = []
+
+    for index, description in enumerate(descriptions):
+        if description is "":
+            description_errors.append(f"Line {index + global_header_lines + 2}: It is recommended to provide a description for a resource.")
+    return description_errors
 
 
 def check_data(dataframe):
@@ -154,6 +163,11 @@ def check_data(dataframe):
         found_errors['Title'] = check_title(dataframe['Title'])
     else:
         found_errors['Title'] = "The mandatory Attribute 'Title' is missing from every item!"
+
+    if dataframe['Description'] is not None:
+        found_errors['Description'] = check_description(dataframe['Description'])
+    else:
+        found_errors['Description'] = "It is recommended to provide a description for every item!"
 
     return found_errors
 
