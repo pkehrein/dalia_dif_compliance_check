@@ -3,6 +3,7 @@ import pandas as pd
 import json
 
 global_header_lines = 0
+global_line_offset = 2
 
 def read_license_file():
     # Reads the license data from its JSON-file and calls the extract_identifier-function.
@@ -60,16 +61,16 @@ def check_authors(authors):
     author_errors = []
     for index, author in enumerate(authors):
         if author is "":
-            author_errors.append(f"Line {index + global_header_lines + 2}: Mandatory attribute 'Author' is missing.")
+            author_errors.append(f"Line {index + global_header_lines + global_line_offset}: Mandatory attribute 'Author' is missing.")
             continue
         if '\*' in author:
             author_list = re.split("\s\*\s", author)
             for auth in author_list:
                 if check_if_error(auth):
-                    author_errors.append(f"Line {index + global_header_lines + 2}: Wrong name format.")
+                    author_errors.append(f"Line {index + global_header_lines + global_line_offset}: Wrong name format.")
         else:
             if check_if_error(author):
-                author_errors.append(f"Line {index + global_header_lines + 2}: Wrong name format.")
+                author_errors.append(f"Line {index + global_header_lines + global_line_offset}: Wrong name format.")
     return author_errors
 
 
@@ -92,10 +93,10 @@ def check_licenses(licenses):
 
     for index, license_id in enumerate(licenses):
         if license_id is "":
-            license_errors.append(f"Line {index + global_header_lines + 2}: License is missing.")
+            license_errors.append(f"Line {index + global_header_lines + global_line_offset}: License is missing.")
             continue
         if license_id not in license_list:
-            license_errors.append(f"Line {index + global_header_lines + 2}: Provided License is not part of the list from 'https://spdx.org/licenses/' or is in a wrong format.")
+            license_errors.append(f"Line {index + global_header_lines + global_line_offset}: Provided License is not part of the list from 'https://spdx.org/licenses/' or is in a wrong format.")
     return license_errors
 
 
@@ -108,10 +109,10 @@ def check_link(link_list):
 
     for index, link in enumerate(link_list):
         if link is "":
-            link_errors.append(f"Line {index + global_header_lines + 2}: Link is missing.")
+            link_errors.append(f"Line {index + global_header_lines + global_line_offset}: Link is missing.")
             continue
         if re.search("^https://\S*$", link) is None:
-            link_errors.append(f"Line {index + global_header_lines + 2}: Link is not in a valid format.")
+            link_errors.append(f"Line {index + global_header_lines + global_line_offset}: Link is not in a valid format.")
     return link_errors
 
 def check_title(titles):
@@ -122,7 +123,7 @@ def check_title(titles):
 
     for index, title in enumerate(titles):
         if title is "":
-            title_errors.append(f"Line {index + global_header_lines + 2}: Title is missing.")
+            title_errors.append(f"Line {index + global_header_lines + global_line_offset}: Title is missing.")
     return title_errors
 
 
@@ -134,7 +135,7 @@ def check_description(descriptions):
 
     for index, description in enumerate(descriptions):
         if description is "":
-            description_errors.append(f"Line {index + global_header_lines + 2}: It is recommended to provide a description for a resource.")
+            description_errors.append(f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide a description for a resource.")
     return description_errors
 
 
