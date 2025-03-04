@@ -335,6 +335,8 @@ def check_file_format(file_formats):
                 if check_file_format_list(file_format_list, file_formats_list):
                     file_format_errors.append(f"Line {index + global_header_lines + global_line_offset}: The provided file format is not included in the picklist.")
 
+    return file_format_errors
+
 
 def check_file_format_format(file_format):
     if re.search("^\.\w+(?:$|\s\*\s\.\w+)*$", file_format) is None:
@@ -346,6 +348,37 @@ def check_file_format_format(file_format):
 def check_file_format_list(file_format_list, file_formats):
     for file_format in file_format_list:
         if file_format not in file_formats:
+            return True
+    return False
+
+
+def check_target_group(target_groups):
+    target_groups_list = read_csv("target_audience.csv")
+    target_group_errors = []
+
+    for index, target_group in enumerate(target_groups):
+        if target_group is "":
+            target_group_errors.append(f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide at least one target group for a learning resource.")
+        else:
+            if check_target_group_format(target_group):
+                target_group_errors.append(f"Line {index + global_header_lines + global_line_offset}: The provided target groups are not formatted properly.")
+            else:
+                target_group_list = split_into_list(target_group)
+                if check_target_group_list(target_group_list, target_groups_list):
+                    target_group_errors.append(f"Line {index + global_header_lines + global_line_offset}: The provided target group is not included in the picklist.")
+    return target_group_errors
+
+
+def check_target_group_format(target_group):
+    if re.search("^\w+(?:\s\(?\w+\)?)?(?:$|\s\*\s\w+(?:$|\s\(?\w+\)?))*", target_group) is None:
+        return True
+    else:
+        return False
+
+
+def check_target_group_list(target_group_list, target_groups):
+    for target_group in target_group_list:
+        if target_group not in target_groups:
             return True
     return False
 
@@ -410,7 +443,12 @@ def check_data(dataframe):
     if dataframe['FileFormat'] is not None:
         found_errors['FileFormat'] = check_file_format(dataframe['FileFormat'])
     else:
-        found_errors['FileFormat'] = "It is recommended to provide the file formats of the ressources."
+        found_errors['FileFormat'] = "It is recommended to provide the file formats of the resources."
+
+    if dataframe['TargetGroup'] is not None:
+        found_errors['TargetGroup'] = check_target_group(dataframe['TargetGroup'])
+    else:
+        found_errors['TargetGroup'] = "It is recommended to provide at least one target group for a learning resource."
 
     return found_errors
 
