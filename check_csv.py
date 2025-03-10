@@ -1,6 +1,5 @@
 import csv
 import re
-from fileinput import filename
 
 import pandas as pd
 import json
@@ -15,8 +14,10 @@ global_proficiency_levels = ["novice", "advanced beginner", "competent", "profic
 def parse_arguments():
     parser = ArgumentParser(description="Check your csv-file if it is in compliance with the DALIA Interchange Format")
     parser.add_argument('input_filename')
-    parser.add_argument('-o', '--output_filename', help="Set the output filename to a custom value. Default is 'report'.")
-    parser.add_argument('-l', '--header_lines', type=int,  help="If your csv-file contains more header lines than just the names of the columns, provide the number of lines to ensure accurate line errors.")
+    parser.add_argument('-o', '--output_filename',
+                        help="Set the output filename to a custom value. Default is 'report'.")
+    parser.add_argument('-l', '--header_lines', type=int,
+                        help="If your csv-file contains more header lines than just the names of the columns, provide the number of lines to ensure accurate line errors.")
 
     return parser.parse_args()
 
@@ -71,8 +72,8 @@ def read_csv(path):
     # Expects: The path to the csv-file.
     # Returns: A pandas dataframe with the data from the csv-file.
     try:
-        csv = pd.read_csv(path)
-        return csv
+        file = pd.read_csv(path)
+        return file
     except FileNotFoundError:
         print("The file could not be found, please check the provided path!")
 
@@ -88,7 +89,7 @@ def remove_header_lines(header_lines, data_frame):
         data_frame.drop(index=i, inplace=True)
 
 
-def fill_empyt_cells(data_frame):
+def fill_empty_cells(data_frame):
     # Fills all empty cells in the dataframe with empty strings to prevent errors
     # Expects: A reference to a pandas dataframe.
     # Returns: No return-value or object, the cells will be filled in the referenced dataframe.
@@ -99,7 +100,7 @@ def split_into_list(string):
     # Splits the given string at the delimiter '*' into list elements.
     # Expects: A string containing at least two items split by a '*'.
     # Returns: A list of strings.
-    return re.split("\s\*\s", string)
+    return re.split(r'\s\*\s', string)
 
 
 def check_authors(authors):
@@ -108,11 +109,11 @@ def check_authors(authors):
     # Returns: A list of errors with line number and type of error.
     author_errors = []
     for index, author in enumerate(authors):
-        if author is "":
+        if author == "":
             author_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: Mandatory attribute 'Author' is missing.")
             continue
-        if '\*' in author:
+        if r'\*' in author:
             author_list = split_into_list(author)
             for auth in author_list:
                 if check_author_format(auth):
@@ -128,8 +129,9 @@ def check_author_format(author):
     # Expects: A string.
     # Returns: False if the string matches the constraints of the DIF and True if it doesn't.
     if re.search(
-            "[\wäöüÄÖÜß-]+,\s[\wäöüÄÖÜß-]+(?:\s?:\s?\{\S*}|)+(?:$|\s\*\s[\wäöüÄÖÜß-]+,\s[\wäöüÄÖÜß-]+(?:\s?:\s?\{\S*}|)+)*", author) is not None or re.search(
-            "^[\S\s]*\s:\s\{organization", author) is not None or re.search("^n/a$", author) is not None:
+            r"[\wäöüÄÖÜß-]+,\s[\wäöüÄÖÜß-]+(?:\s?:\s?\{\S*}|)+(?:$|\s\*\s[\wäöüÄÖÜß-]+,\s[\wäöüÄÖÜß-]+(?:\s?:\s?\{\S*}|)+)*",
+            author) is not None or re.search(
+        r"^[\S\s]*\s:\s\{organization", author) is not None or re.search("^n/a$", author) is not None:
         return False
     else:
         return True
@@ -143,7 +145,7 @@ def check_licenses(licenses):
     license_errors = []
 
     for index, license_id in enumerate(licenses):
-        if license_id is "":
+        if license_id == "":
             license_errors.append(f"Line {index + global_header_lines + global_line_offset}: License is missing.")
             continue
         if license_id not in license_list:
@@ -160,10 +162,10 @@ def check_link(link_list):
     link_errors = []
 
     for index, link in enumerate(link_list):
-        if link is "":
+        if link == "":
             link_errors.append(f"Line {index + global_header_lines + global_line_offset}: Link is missing.")
             continue
-        if re.search("^https://\S+(?:\s\*\shttps://\S+)*$", link) is None:
+        if re.search(r"^https://\S+(?:\s\*\shttps://\S+)*$", link) is None:
             link_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: Link is not in a valid format.")
     return link_errors
@@ -176,7 +178,7 @@ def check_title(titles):
     title_errors = []
 
     for index, title in enumerate(titles):
-        if title is "":
+        if title == "":
             title_errors.append(f"Line {index + global_header_lines + global_line_offset}: Title is missing.")
     return title_errors
 
@@ -188,7 +190,7 @@ def check_description(descriptions):
     description_errors = []
 
     for index, description in enumerate(descriptions):
-        if description is "":
+        if description == "":
             description_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide a description for a resource.")
     return description_errors
@@ -197,8 +199,8 @@ def check_description(descriptions):
 def check_community_format(string):
     # Checks the community string formatting.
     # Expects: A string.
-    # Returns: If string is of format 'Community (S|R|RS) False or no error and if not True or error found.
-    if re.search('^[\S\s]*\s\((RS|SR|S|R)\)$', string) is not None:
+    # Returns: If string is of format 'Community (S|R|RS)' False or no error and if not True or error found.
+    if re.search(r'^[\S\s]*\s\((RS|SR|S|R)\)$', string) is not None:
         return False
     else:
         return True
@@ -209,7 +211,7 @@ def check_community_name(string):
     # Expects: A string in the format 'Community ()'
     # Returns: True if in list, false if not.
     communities_list = read_communities_list()
-    community_name = re.sub('\s\(\S*\)', '', string)
+    community_name = re.sub(r'\s\(\S*\)', '', string)
     if community_name in communities_list["subsidiaries"]:
         return True
     else:
@@ -223,11 +225,11 @@ def check_community(communities):
     community_errors = []
 
     for index, community in enumerate(communities):
-        if community is "":
+        if community == "":
             community_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide a Community, either as supporting or recommending entity.")
         else:
-            if "\*" in community:
+            if r"\*" in community:
                 community_list = split_into_list(community)
                 for com in community_list:
                     community_errors = check_single_community(com, community_errors, index)
@@ -245,6 +247,7 @@ def check_single_community(com, community_errors, index):
             f"Line {index + global_header_lines + global_line_offset}: The provided name does not match any name from the subsidiaries list. Please check if the name is correct. If it is you can ignore this warning.")
     return community_errors
 
+
 def check_disciplines(disciplines):
     # Checks the column 'Discipline' according to the rules of the DIF.
     # Expects: A series from a pandas dataframe containing links to the relevant disciplines listed in https://skohub.io/dini-ag-kim/hochschulfaechersystematik/heads/master/w3id.org/kim/hochschulfaechersystematik/scheme.html
@@ -252,11 +255,11 @@ def check_disciplines(disciplines):
     disciplines_errors = []
 
     for index, discipline in enumerate(disciplines):
-        if discipline is "":
+        if discipline == "":
             disciplines_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide at least one relevant discipline as a link listed in https://skohub.io/dini-ag-kim/hochschulfaechersystematik/heads/master/w3id.org/kim/hochschulfaechersystematik/scheme.html .")
         else:
-            if "\*" in discipline:
+            if r"\*" in discipline:
                 discipline_list = split_into_list(discipline)
                 for disc in discipline_list:
                     disciplines_errors = check_single_discipline(disc, disciplines_errors, index)
@@ -274,18 +277,17 @@ def check_single_discipline(discipline, discipline_errors, index):
 
 
 def check_discipline_link(discipline):
-    if re.search("^https://w3id\.org/kim/hochschulfaechersystematik/n\d+", discipline) is not None:
+    if re.search(r"^https://w3id\.org/kim/hochschulfaechersystematik/n\d+", discipline) is not None:
         return False
     else:
         return True
 
 
 def check_media_types(mediatypes):
-
     media_type_errors = []
 
     for index, media_type in enumerate(mediatypes):
-        if media_type is "":
+        if media_type == "":
             media_type_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide a media type for learning resources")
         else:
@@ -303,11 +305,10 @@ def check_media_types(mediatypes):
 
 
 def check_proficiency_levels(proficiency_levels):
-
     proficiency_level_errors = []
 
     for index, proficiency_level in enumerate(proficiency_levels):
-        if proficiency_level is "":
+        if proficiency_level == "":
             proficiency_level_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide at least one proficiency level for learning resources.")
         else:
@@ -325,18 +326,19 @@ def check_proficiency_levels(proficiency_levels):
 
 
 def check_date_format(publication_date):
-    if re.search("^\d{4}-\d{2}-\d{2}$", publication_date) is None and re.search("^\d{4}-\d{2}$", publication_date) is None and re.search("^\d{4}$", publication_date) is None:
+    if re.search(r"^\d{4}-\d{2}-\d{2}$", publication_date) is None and re.search(r"^\d{4}-\d{2}$",
+                                                                                publication_date) is None and re.search(
+            r"^\d{4}$", publication_date) is None:
         return True
     else:
         return False
 
 
 def check_publication_dates(publication_dates):
-
     publication_date_errors = []
 
     for index, publication_date in enumerate(publication_dates):
-        if publication_date is "":
+        if publication_date == "":
             publication_date_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide a publication date for learning resources.")
         else:
@@ -347,26 +349,30 @@ def check_publication_dates(publication_dates):
 
     return publication_date_errors
 
+
 def check_file_format(file_formats):
     file_formats_list = read_data_formats_file()
     file_format_errors = []
 
     for index, file_format in enumerate(file_formats):
-        if file_format is "":
-            file_format_errors.append(f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide the file format of a learning resource.")
+        if file_format == "":
+            file_format_errors.append(
+                f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide the file format of a learning resource.")
         else:
             if check_file_format_format(file_format):
-                file_format_errors.append(f"Line {index + global_header_lines + global_line_offset}: The provided file format is not formatted properly.")
+                file_format_errors.append(
+                    f"Line {index + global_header_lines + global_line_offset}: The provided file format is not formatted properly.")
             else:
                 file_format_list = split_into_list(file_format)
                 if check_file_format_list(file_format_list, file_formats_list):
-                    file_format_errors.append(f"Line {index + global_header_lines + global_line_offset}: The provided file format is not included in the picklist.")
+                    file_format_errors.append(
+                        f"Line {index + global_header_lines + global_line_offset}: The provided file format is not included in the picklist.")
 
     return file_format_errors
 
 
 def check_file_format_format(file_format):
-    if re.search("^\.\w+(?:$|\s\*\s\.\w+)*$", file_format) is None:
+    if re.search(r"^\.\w+(?:$|\s\*\s\.\w+)*$", file_format) is None:
         return True
     else:
         return False
@@ -384,20 +390,23 @@ def check_target_group(target_groups):
     target_group_errors = []
 
     for index, target_group in enumerate(target_groups):
-        if target_group is "":
-            target_group_errors.append(f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide at least one target group for a learning resource.")
+        if target_group == "":
+            target_group_errors.append(
+                f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide at least one target group for a learning resource.")
         else:
             if check_target_group_format(target_group):
-                target_group_errors.append(f"Line {index + global_header_lines + global_line_offset}: The provided target groups are not formatted properly.")
+                target_group_errors.append(
+                    f"Line {index + global_header_lines + global_line_offset}: The provided target groups are not formatted properly.")
             else:
                 target_group_list = split_into_list(target_group)
                 if check_target_group_list(target_group_list, target_groups_list):
-                    target_group_errors.append(f"Line {index + global_header_lines + global_line_offset}: The provided target group is not included in the picklist.")
+                    target_group_errors.append(
+                        f"Line {index + global_header_lines + global_line_offset}: The provided target group is not included in the picklist.")
     return target_group_errors
 
 
 def check_target_group_format(target_group):
-    if re.search("^\w+(?:\s\(?\w+\)?)?(?:$|\s\*\s\w+(?:$|\s\(?\w+\)?))*", target_group) is None:
+    if re.search(r"^\w+(?:\s\(?\w+\)?)?(?:$|\s\*\s\w+(?:$|\s\(?\w+\)?))*", target_group) is None:
         return True
     else:
         return False
@@ -414,70 +423,71 @@ def check_data(dataframe):
     # Checks data within a dataframe according to the rules of the DIF.
     # Expects: A pandas dataframe.
     # Returns: A dictionary with the Attributes as keys and lists of all errors as values.
-    found_errors = dict()
+    errors = dict()
 
     if dataframe['Authors'] is not None:
-        found_errors['Authors'] = check_authors(dataframe['Authors'])
+        errors['Authors'] = check_authors(dataframe['Authors'])
     else:
-        found_errors['Authors'] = "The mandatory Attribute 'Authors' is missing from every item!"
+        errors['Authors'] = "The mandatory Attribute 'Authors' is missing from every item!"
 
     if dataframe['License'] is not None:
-        found_errors['License'] = check_licenses(dataframe['License'])
+        errors['License'] = check_licenses(dataframe['License'])
     else:
-        found_errors['License'] = "The mandatory Attribute 'License' is missing from every item!"
+        errors['License'] = "The mandatory Attribute 'License' is missing from every item!"
 
     if dataframe['Link'] is not None:
-        found_errors['Link'] = check_link(dataframe['Link'])
+        errors['Link'] = check_link(dataframe['Link'])
     else:
-        found_errors['Link'] = "The mandatory Attribute 'License' is missing from every item!"
+        errors['Link'] = "The mandatory Attribute 'License' is missing from every item!"
 
     if dataframe['Title'] is not None:
-        found_errors['Title'] = check_title(dataframe['Title'])
+        errors['Title'] = check_title(dataframe['Title'])
     else:
-        found_errors['Title'] = "The mandatory Attribute 'Title' is missing from every item!"
+        errors['Title'] = "The mandatory Attribute 'Title' is missing from every item!"
 
     if dataframe['Description'] is not None:
-        found_errors['Description'] = check_description(dataframe['Description'])
+        errors['Description'] = check_description(dataframe['Description'])
     else:
-        found_errors['Description'] = "It is recommended to provide a description for every item!"
+        errors['Description'] = "It is recommended to provide a description for every item!"
 
     if dataframe['Community'] is not None:
-        found_errors['Community'] = check_community(dataframe['Community'])
+        errors['Community'] = check_community(dataframe['Community'])
     else:
-        found_errors[
-            'Community'] = "It is recommended to provide information about recommending and supporting commnities!"
+        errors[
+            'Community'] = "It is recommended to provide information about recommending and supporting communities!"
 
     if dataframe['Discipline'] is not None:
-        found_errors['Discipline'] = check_disciplines(dataframe['Discipline'])
+        errors['Discipline'] = check_disciplines(dataframe['Discipline'])
     else:
-        found_errors['Discipline'] = "It is recommended to provide at least one relevant discipline listed in https://skohub.io/dini-ag-kim/hochschulfaechersystematik/heads/master/w3id.org/kim/hochschulfaechersystematik/scheme.html"
+        errors[
+            'Discipline'] = "It is recommended to provide at least one relevant discipline listed in https://skohub.io/dini-ag-kim/hochschulfaechersystematik/heads/master/w3id.org/kim/hochschulfaechersystematik/scheme.html"
 
     if dataframe['MediaType'] is not None:
-        found_errors['MediaType'] = check_media_types(dataframe['MediaType'])
+        errors['MediaType'] = check_media_types(dataframe['MediaType'])
     else:
-        found_errors['MediaType'] = "It is recommended to provide media types for learning resources."
+        errors['MediaType'] = "It is recommended to provide media types for learning resources."
 
     if dataframe['ProficiencyLevel'] is not None:
-        found_errors['ProficiencyLevel'] = check_proficiency_levels(dataframe['ProficiencyLevel'])
+        errors['ProficiencyLevel'] = check_proficiency_levels(dataframe['ProficiencyLevel'])
     else:
-        found_errors['ProficiencyLevel'] = "It is recommended to provide proficiency levels for learning resources."
+        errors['ProficiencyLevel'] = "It is recommended to provide proficiency levels for learning resources."
 
     if dataframe['PublicationDate'] is not None:
-        found_errors['PublicationDate'] = check_publication_dates(dataframe['PublicationDate'])
+        errors['PublicationDate'] = check_publication_dates(dataframe['PublicationDate'])
     else:
-        found_errors['PublicationDate'] = "It is recommended to provide publication dates for learning resources."
+        errors['PublicationDate'] = "It is recommended to provide publication dates for learning resources."
 
     if dataframe['FileFormat'] is not None:
-        found_errors['FileFormat'] = check_file_format(dataframe['FileFormat'])
+        errors['FileFormat'] = check_file_format(dataframe['FileFormat'])
     else:
-        found_errors['FileFormat'] = "It is recommended to provide the file formats of the resources."
+        errors['FileFormat'] = "It is recommended to provide the file formats of the resources."
 
     if dataframe['TargetGroup'] is not None:
-        found_errors['TargetGroup'] = check_target_group(dataframe['TargetGroup'])
+        errors['TargetGroup'] = check_target_group(dataframe['TargetGroup'])
     else:
-        found_errors['TargetGroup'] = "It is recommended to provide at least one target group for a learning resource."
+        errors['TargetGroup'] = "It is recommended to provide at least one target group for a learning resource."
 
-    return found_errors
+    return errors
 
 
 def write_output(errors, file_name):
@@ -503,7 +513,7 @@ if __name__ == '__main__':
     csv_file = read_csv(args.input_filename)
     if args.header_lines is not None and args.header_lines > 0:
         remove_header_lines(args.header_lines, csv_file)
-    fill_empyt_cells(csv_file)
+    fill_empty_cells(csv_file)
     found_errors = check_data(csv_file)
 
     if args.output_filename is not None:
