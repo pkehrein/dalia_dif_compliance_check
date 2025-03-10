@@ -1,6 +1,10 @@
+import csv
 import re
+from fileinput import filename
+
 import pandas as pd
 import json
+from argparse import ArgumentParser
 
 global_header_lines = 0
 global_line_offset = 2
@@ -8,11 +12,20 @@ global_media_types = ["audio", "video", "text", "presentation", "code", "image",
 global_proficiency_levels = ["novice", "advanced beginner", "competent", "proficient", "expert"]
 
 
+def parse_arguments():
+    parser = ArgumentParser(description="Check your csv-file if it is in compliance with the DALIA Interchange Format")
+    parser.add_argument('input_filename')
+    parser.add_argument('-o', '--output_filename', help="Set the output filename to a custom value. Default is 'report'.")
+    parser.add_argument('-l', '--header_lines', type=int,  help="If your csv-file contains more header lines than just the names of the columns, provide the number of lines to ensure accurate line errors.")
+
+    return parser.parse_args()
+
+
 def read_license_file():
     # Reads the license data from its JSON-file and calls the extract_identifier-function.
     # Expects: None.
     # Returns: A list of strings.
-    with open("licenses.json", 'r') as file:
+    with open("resources/licenses.json", 'r') as file:
         data = json.load(file)
     license_list = extract_identifier(data['licenses'])
     return license_list
@@ -22,13 +35,13 @@ def read_communities_list():
     # Reads the communities list from its JSON-file.
     # Expects: None.
     # Returns: A list of strings.
-    with open("communities.json", 'r') as file:
+    with open("resources/communities.json", 'r') as file:
         data = json.load(file)
     return data
 
 
 def read_data_formats_file():
-    with open("mimeData.json", 'r') as file:
+    with open("resources/mimeData.json", 'r') as file:
         data = json.load(file)
     file_formats_list = extract_file_types(data)
     return file_formats_list
@@ -66,13 +79,13 @@ def read_csv(path):
 
 def remove_header_lines(header_lines, data_frame):
     # Removes additional header lines between the data-labels and the data.
-    # Expects: - If only one header line an integer with the index of the line that is to be deleted or if multiple header
-    #            lines a list-like with all indeces of the lines that are to be deleted. Example: '0' or '[0, 1]'
+    # Expects: - The number of header lines except the column names.
     #          - A reference to the dataframe the lines are to be deleted from.
     # Returns: No explicit return-value or object, the lines will be deleted from the referenced dataframe in place instead.
     global global_header_lines
-    global_header_lines = len(header_lines)
-    data_frame.drop(index=header_lines, inplace=True)
+    global_header_lines = header_lines
+    for i in range(0, header_lines):
+        data_frame.drop(index=i, inplace=True)
 
 
 def fill_empyt_cells(data_frame):
@@ -113,10 +126,10 @@ def check_authors(authors):
 def check_author_format(author):
     # Check the format of a name with a regular expression.
     # Expects: A string.
-    # Returns: False if the string matches the constraints of the DIF and True if it doesnt.
-    if re.search("^[A-Za-zäöüÄÖÜß]*,\s[A-Za-zäöüÄÖÜß]*$", author) is not None or re.search(
-            "[A-Za-zäöüÄÖÜß]*,\s[A-Za-zäöüÄÖÜß]*\s?:\s?\{\S*}$", author) is not None or re.search(
-            "^[A-Za-z0-9äöüÄÖÜß]*\s:\s\{organization", author) is not None or re.search("^n/a$", author) is not None:
+    # Returns: False if the string matches the constraints of the DIF and True if it doesn't.
+    if re.search(
+            "[\wäöüÄÖÜß-]+,\s[\wäöüÄÖÜß-]+(?:\s?:\s?\{\S*}|)+(?:$|\s\*\s[\wäöüÄÖÜß-]+,\s[\wäöüÄÖÜß-]+(?:\s?:\s?\{\S*}|)+)*", author) is not None or re.search(
+            "^[\S\s]*\s:\s\{organization", author) is not None or re.search("^n/a$", author) is not None:
         return False
     else:
         return True
@@ -150,7 +163,7 @@ def check_link(link_list):
         if link is "":
             link_errors.append(f"Line {index + global_header_lines + global_line_offset}: Link is missing.")
             continue
-        if re.search("^https://\S*$", link) is None:
+        if re.search("^https://\S+(?:\s\*\shttps://\S+)*$", link) is None:
             link_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: Link is not in a valid format.")
     return link_errors
@@ -185,7 +198,7 @@ def check_community_format(string):
     # Checks the community string formatting.
     # Expects: A string.
     # Returns: If string is of format 'Community (S|R|RS) False or no error and if not True or error found.
-    if re.search('^[A-Za-z0-9äöüÄÖÜß]*\s\((RS|SR|S|R)\)$', string) is not None:
+    if re.search('^[\S\s]*\s\((RS|SR|S|R)\)$', string) is not None:
         return False
     else:
         return True
@@ -276,9 +289,16 @@ def check_media_types(mediatypes):
             media_type_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide a media type for learning resources")
         else:
-            if media_type not in global_media_types:
-                media_type_errors.append(
-                    f"Line {index + global_header_lines + global_line_offset}: The provided media type is not in the DIF picklist.")
+            if '*' in media_type:
+                type_list = split_into_list(media_type)
+                for element in type_list:
+                    if element not in global_media_types:
+                        media_type_errors.append(
+                            f"Line {index + global_header_lines + global_line_offset}: The provided media type is not in the DIF picklist.")
+            else:
+                if media_type not in global_media_types:
+                    media_type_errors.append(
+                        f"Line {index + global_header_lines + global_line_offset}: The provided media type is not in the DIF picklist.")
     return media_type_errors
 
 
@@ -291,9 +311,16 @@ def check_proficiency_levels(proficiency_levels):
             proficiency_level_errors.append(
                 f"Line {index + global_header_lines + global_line_offset}: It is recommended to provide at least one proficiency level for learning resources.")
         else:
-            if proficiency_level not in global_proficiency_levels:
-                proficiency_level_errors.append(
-                    f"Line {index + global_header_lines + global_line_offset}: The provided proficiency level is not in the DIF picklist.")
+            if '*' in proficiency_level:
+                level_list = split_into_list(proficiency_level)
+                for level in level_list:
+                    if level not in global_proficiency_levels:
+                        proficiency_level_errors.append(
+                            f"Line {index + global_header_lines + global_line_offset}: The provided proficiency level is not in the DIF picklist.")
+            else:
+                if proficiency_level not in global_proficiency_levels:
+                    proficiency_level_errors.append(
+                        f"Line {index + global_header_lines + global_line_offset}: The provided proficiency level is not in the DIF picklist.")
     return proficiency_level_errors
 
 
@@ -353,7 +380,7 @@ def check_file_format_list(file_format_list, file_formats):
 
 
 def check_target_group(target_groups):
-    target_groups_list = read_csv("target_audience.csv")
+    target_groups_list = read_csv("resources/target_audience.csv")
     target_group_errors = []
 
     for index, target_group in enumerate(target_groups):
@@ -453,8 +480,34 @@ def check_data(dataframe):
     return found_errors
 
 
+def write_output(errors, file_name):
+    fieldnames = errors.keys()
+    max_length = max(len(values) for values in errors.values())
+    with open(file_name, 'w', newline="") as report:
+        writer = csv.writer(report)
+        writer.writerow(fieldnames)
+
+        for i in range(max_length):
+            row = []
+            for key in errors:
+                if i < len(errors[key]):
+                    row.append(errors[key][i])
+                else:
+                    row.append('')
+            writer.writerow(row)
+
+
 if __name__ == '__main__':
-    csv_file = read_csv("Courses_Register.csv")
-    remove_header_lines([0], csv_file)
+    args = parse_arguments()
+
+    csv_file = read_csv(args.input_filename)
+    if args.header_lines is not None and args.header_lines > 0:
+        remove_header_lines(args.header_lines, csv_file)
     fill_empyt_cells(csv_file)
-    check_data(csv_file)
+    found_errors = check_data(csv_file)
+
+    if args.output_filename is not None:
+        filename = f"./{args.output_filename}.csv"
+    else:
+        filename = f"./report-{args.input_filename}.csv"
+    write_output(found_errors, filename)
